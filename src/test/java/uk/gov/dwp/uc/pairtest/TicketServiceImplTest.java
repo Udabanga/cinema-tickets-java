@@ -2,6 +2,9 @@ package uk.gov.dwp.uc.pairtest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import thirdparty.paymentgateway.TicketPaymentService;
+import thirdparty.seatbooking.SeatReservationService;
 import uk.gov.dwp.uc.pairtest.domain.TicketTypeRequest;
 import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
 
@@ -13,7 +16,9 @@ class TicketServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        ticketService = new TicketServiceImpl();
+        TicketPaymentService ticketPaymentService = Mockito.mock(TicketPaymentService.class);
+        SeatReservationService seatReservationService = Mockito.mock(SeatReservationService.class);
+        ticketService = new TicketServiceImpl(ticketPaymentService, seatReservationService);
     }
 
     @Test
@@ -44,10 +49,27 @@ class TicketServiceImplTest {
 
     @Test
     public void testNullTicketRequest_shouldThrowException(){
-        Long invalidAccountId = 0L;
+        Long validAccountId = 1L;
 
-        InvalidPurchaseException exception = assertThrows(InvalidPurchaseException.class, ()-> ticketService.purchaseTickets(invalidAccountId, (TicketTypeRequest) null));
+        InvalidPurchaseException exception = assertThrows(InvalidPurchaseException.class, ()-> ticketService.purchaseTickets(validAccountId, (TicketTypeRequest) null));
         assertEquals(InvalidPurchaseException.NO_TICKET_REQUESTED_MESSAGE,exception.getMessage());
+    }
+
+    @Test
+    public void testNoTicketRequest_shouldThrowException(){
+        Long validAccountId = 1L;
+
+        InvalidPurchaseException exception = assertThrows(InvalidPurchaseException.class, ()-> ticketService.purchaseTickets(validAccountId));
+        assertEquals(InvalidPurchaseException.NO_TICKET_REQUESTED_MESSAGE,exception.getMessage());
+    }
+
+    @Test
+    public void testNegativeTicketRequest_shouldThrowException(){
+        Long validAccountId = 1L;
+        TicketTypeRequest adultTicket = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, -1);
+
+        InvalidPurchaseException exception = assertThrows(InvalidPurchaseException.class, ()-> ticketService.purchaseTickets(validAccountId, adultTicket));
+        assertEquals(InvalidPurchaseException.INVALID_TICKET_QUANTITY_MESSAGE,exception.getMessage());
     }
 
     //Count Test
@@ -61,7 +83,7 @@ class TicketServiceImplTest {
     }
 
     @Test
-    public void testTicketMissingAdultWithChildInfant(){
+    public void testTicketMissingAdultWithChildInfant_shouldThrowException(){
         Long validAccountId=1L;
         TicketTypeRequest infantTicket = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 1);
         TicketTypeRequest childTicket = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 1);
@@ -71,7 +93,7 @@ class TicketServiceImplTest {
     }
 
     @Test
-    public void testTicketsWithInfantMissingAccompanyingAdult(){
+    public void testTicketsWithInfantMissingAccompanyingAdult_shouldThrowException(){
         Long validAccountId=1L;
 
         TicketTypeRequest adultTicket = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
